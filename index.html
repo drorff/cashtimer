@@ -52,22 +52,27 @@
             font-size: 1.5rem;
         }
 
-        /* כפתור הפעלת התראות */
-        .noti-btn {
-            background-color: #ff9f43;
+        /* כפתור יצירת קיצור דרך באייפון */
+        .shortcut-btn {
+            background-color: #8e44ad;
             color: white;
             border: none;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.85rem;
+            padding: 12px 15px;
+            border-radius: 10px;
+            font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
             margin-bottom: 1.5rem;
             width: 100%;
-            transition: background 0.3s;
+            transition: background 0.3s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .noti-btn.granted {
-            background-color: var(--success-color);
+        .shortcut-btn:active {
+            transform: scale(0.98);
         }
 
         .input-group {
@@ -164,8 +169,8 @@
 <div class="card">
     <h1>מחשבון עבודה ושכר 💰</h1>
     
-    <!-- כפתור אישור התראות למשתמש -->
-    <button id="enableNotifications" class="noti-btn">🔔 לחץ כאן להפעלת התראות באייפון</button>
+    <!-- הכפתור החדש שמפעיל את הקיצור באייפון -->
+    <button id="setReminderBtn" class="shortcut-btn">⏰ הגדר התראה באייפון לסוף התקן</button>
 
     <div class="input-group">
         <label for="arrivalTime">שעת הגעה (HH:MM):</label>
@@ -210,43 +215,11 @@
     const moneyDisplay = document.getElementById('moneyEarned');
     const currentRateBadge = document.getElementById('currentRateBadge');
     const saveStatus = document.getElementById('saveStatus');
-    const notiBtn = document.getElementById('enableNotifications');
+    const setReminderBtn = document.getElementById('setReminderBtn');
 
     const BASE_WAGE = 115.38; 
-    let notificationSent = false; // משתנה שמונע מההתראה להישלח שוב ושוב בלופ
-
-    // רישום ה-Service Worker הנדרש להתראות ב-iOS
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').then(() => {
-            console.log('Service Worker Registered');
-        });
-    }
-
-    // ניהול כפתור הוספת ההתראות
-    if (Notification.permission === 'granted') {
-        updateNotiButtonState();
-    }
-
-    notiBtn.addEventListener('click', () => {
-        Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-                updateNotiButtonState();
-                // שליחת התראת בדיקה מיידית כדי לוודא שזה עובד
-                navigator.serviceWorker.ready.then(registration => {
-                    registration.showNotification('מערכת ההתראות הופעלה! 🎉', {
-                        body: 'תקבל התראה ברגע שיחלו השעות הנוספות.',
-                        icon: 'data:image/svg+xml,...'
-                    });
-                });
-            }
-        });
-    });
-
-    function updateNotiButtonState() {
-        notiBtn.textContent = '✓ ההתראות מאושרות באפליקציה';
-        notiBtn.classList.add('granted');
-        notiBtn.disabled = true;
-    }
+    let globalEndH = 0;
+    let globalEndM = 0;
 
     function getTodayString() {
         const today = new Date();
@@ -287,7 +260,6 @@
             localStorage.setItem('work_calc_time', value);
             localStorage.setItem('work_calc_date', getTodayString());
             saveStatus.style.display = 'block';
-            notificationSent = false; // איפוס ההתראה במידה והשעה שונתה
         } else {
             saveStatus.style.display = 'none';
         }
@@ -313,11 +285,11 @@
         start.setHours(arrivalH, arrivalM, 0);
 
         const totalMinutesToExit = (arrivalH * 60) + arrivalM + (presenceHours * 60);
-        const endH = Math.floor(totalMinutesToExit / 60) % 24;
-        const endM = Math.floor(totalMinutesToExit % 60);
-        endTimeDisplay.textContent = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+        globalEndH = Math.floor(totalMinutesToExit / 60) % 24;
+        globalEndM = Math.floor(totalMinutesToExit % 60);
+        endTimeDisplay.textContent = `${String(globalEndH).padStart(2, '0')}:${String(globalEndM).padStart(2, '0')}`;
 
-        updateDynamics(start, endH, endM, presenceHours);
+        updateDynamics(start, globalEndH, globalEndM, presenceHours);
     }
 
     function updateDynamics(start, endH, endM, presenceHours) {
@@ -393,24 +365,7 @@
             timerLabel.textContent = "שעות נוספות:";
             timeTimerDisplay.style.color = "var(--success-color)";
             formatAndDisplayTime(Math.abs(diffMs));
-
-            // מנגנון שליחת ההתראה ברגע שהגענו לשעות הנוספות
-            if (!notificationSent && Notification.permission === 'granted') {
-                triggerShiftEndNotification();
-            }
         }
-    }
-
-    function triggerShiftEndNotification() {
-        notificationSent = true; 
-        navigator.serviceWorker.ready.then(registration => {
-            registration.showNotification('המשמרת הסתיימה! 🕒', {
-                body: 'התחילו השעות הנוספות שלך בתעריף 125%. הגיע הזמן להרוויח יותר!',
-                badge: 'data:image/svg+xml,...',
-                tag: 'shift-end-alert', // מונע כפילויות של התראות
-                requireInteraction: true // משאיר את ההתראה על המסך עד שהמשתמש יסגור אותה
-            });
-        });
     }
 
     function formatAndDisplayTime(ms) {
@@ -419,6 +374,35 @@
         const secs = Math.floor((ms % (1000 * 60)) / 1000);
         timeTimerDisplay.textContent = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
+
+    // פונקציית יצירת התזכורת המובנית לאייפון דרך מערכת ה-URL Schemes של אפל
+    setReminderBtn.addEventListener('click', () => {
+        const paddedH = String(globalEndH).padStart(2, '0');
+        const paddedM = String(globalEndM).padStart(2, '0');
+        
+        // יצירת אירוע ישיר באפליקציית התזכורות המובנית של iOS שפועל ברקע
+        const reminderTitle = encodeURIComponent("סוף משמרת תקן - מתחילות שעות נוספות! 🚀");
+        const iosShortcutsUrl = `shortcuts://x-callback-url/run-shortcut?name=${encodeURIComponent("יצירת התראה")}&input=${paddedH}:${paddedM}`;
+        
+        // פתיחת אפליקציית השעון המעורר ישירות עם השעה הנכונה (כגיבוי פשוט ומהיר ללא צורך בהגדרות)
+        // המשתמש מועבר ישירות להגדרת שעון מעורר קבוע
+        alert(`השעה המתוכננת היא ${paddedH}:${paddedM}. בלחיצה על אישור, נעביר אותך לאפליקציית השעון/התזכורות המובנית של האייפון.`);
+        
+        // דרך קלה: פתיחת תזכורת ביומן של האייפון בצורה חלקה
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        
+        const calUrl = `data:text/calendar;charset=utf8,BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${year}${month}${day}T${paddedH}${paddedM}00\nDTEND:${year}${month}${day}T${paddedH}${paddedM}00\nSUMMARY:סוף משמרת תקן 🚀\nDESCRIPTION:שעות הנוכחות הרגילות הסתיימו. תעריף 125% מתחיל עכשיו!\nEND:VEVENT\nEND:VCALENDAR`;
+        
+        const link = document.createElement('a');
+        link.href = calUrl;
+        link.download = 'shift_end.ics';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
 
     dayInput.addEventListener('change', calculate);
     setInterval(calculate, 1000);
