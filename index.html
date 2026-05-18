@@ -5,15 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מחשבון שכר</title>
 
-    <!-- הגדרות להרצה כאפליקציה במסך מלא באייפון (iOS) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="מחשבון שכר">
 
-    <!-- אייקון ללשונית בדפדפן (Favicon) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏱️</text></svg>">
-
-    <!-- אייקון לשמירה על מסך הבית באייפון (Apple Touch Icon) -->
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%234a90e2%22/><text x=%2210%22 y=%2275%22 font-size=%2270%22>⏱️</text></svg>">
 
     <style>
@@ -52,8 +48,26 @@
 
         h1 {
             color: var(--primary-color);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             font-size: 1.5rem;
+        }
+
+        /* כפתור הפעלת התראות */
+        .noti-btn {
+            background-color: #ff9f43;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        .noti-btn.granted {
+            background-color: var(--success-color);
         }
 
         .input-group {
@@ -150,6 +164,9 @@
 <div class="card">
     <h1>מחשבון עבודה ושכר 💰</h1>
     
+    <!-- כפתור אישור התראות למשתמש -->
+    <button id="enableNotifications" class="noti-btn">🔔 לחץ כאן להפעלת התראות באייפון</button>
+
     <div class="input-group">
         <label for="arrivalTime">שעת הגעה (HH:MM):</label>
         <input type="text" id="arrivalTime" placeholder="08:00" maxlength="5" inputmode="numeric">
@@ -173,7 +190,7 @@
 
         <div class="results-wrapper" style="display: flex; justify-content: space-between; gap: 10px;">
             <div class="result-item" style="flex: 1;">
-                <div class="result-label" id="timerLabel">זמן נותר:</div>
+                <div class="result-label" id="timerLabel">נותר לתקן:</div>
                 <div id="timeTimer" class="result-value countdown" style="font-size: 1.5rem;">00:00:00</div>
             </div>
             <div class="result-item" style="flex: 1;">
@@ -193,8 +210,43 @@
     const moneyDisplay = document.getElementById('moneyEarned');
     const currentRateBadge = document.getElementById('currentRateBadge');
     const saveStatus = document.getElementById('saveStatus');
+    const notiBtn = document.getElementById('enableNotifications');
 
     const BASE_WAGE = 115.38; 
+    let notificationSent = false; // משתנה שמונע מההתראה להישלח שוב ושוב בלופ
+
+    // רישום ה-Service Worker הנדרש להתראות ב-iOS
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').then(() => {
+            console.log('Service Worker Registered');
+        });
+    }
+
+    // ניהול כפתור הוספת ההתראות
+    if (Notification.permission === 'granted') {
+        updateNotiButtonState();
+    }
+
+    notiBtn.addEventListener('click', () => {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                updateNotiButtonState();
+                // שליחת התראת בדיקה מיידית כדי לוודא שזה עובד
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.showNotification('מערכת ההתראות הופעלה! 🎉', {
+                        body: 'תקבל התראה ברגע שיחלו השעות הנוספות.',
+                        icon: 'data:image/svg+xml,...'
+                    });
+                });
+            }
+        });
+    });
+
+    function updateNotiButtonState() {
+        notiBtn.textContent = '✓ ההתראות מאושרות באפליקציה';
+        notiBtn.classList.add('granted');
+        notiBtn.disabled = true;
+    }
 
     function getTodayString() {
         const today = new Date();
@@ -235,6 +287,7 @@
             localStorage.setItem('work_calc_time', value);
             localStorage.setItem('work_calc_date', getTodayString());
             saveStatus.style.display = 'block';
+            notificationSent = false; // איפוס ההתראה במידה והשעה שונתה
         } else {
             saveStatus.style.display = 'none';
         }
@@ -340,7 +393,24 @@
             timerLabel.textContent = "שעות נוספות:";
             timeTimerDisplay.style.color = "var(--success-color)";
             formatAndDisplayTime(Math.abs(diffMs));
+
+            // מנגנון שליחת ההתראה ברגע שהגענו לשעות הנוספות
+            if (!notificationSent && Notification.permission === 'granted') {
+                triggerShiftEndNotification();
+            }
         }
+    }
+
+    function triggerShiftEndNotification() {
+        notificationSent = true; 
+        navigator.serviceWorker.ready.then(registration => {
+            registration.showNotification('המשמרת הסתיימה! 🕒', {
+                body: 'התחילו השעות הנוספות שלך בתעריף 125%. הגיע הזמן להרוויח יותר!',
+                badge: 'data:image/svg+xml,...',
+                tag: 'shift-end-alert', // מונע כפילויות של התראות
+                requireInteraction: true // משאיר את ההתראה על המסך עד שהמשתמש יסגור אותה
+            });
+        });
     }
 
     function formatAndDisplayTime(ms) {
