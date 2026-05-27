@@ -14,19 +14,36 @@
 
     <style>
         :root {
+            --bg-color: #f5f7fa;
+            --card-bg: white;
             --primary-color: #4a90e2;
-            --secondary-color: #f5f7fa;
             --accent-color: #e67e22;
             --text-color: #333;
+            --label-color: #555;
+            --sub-label: #777;
             --money-color: #2ecc71;
             --success-color: #27ae60;
             --danger-color: #e74c3c;
             --break-color: #7f8c8d;
+            --border-color: #ddd;
+            --panel-bg: #f9f9f9;
+        }
+
+        /* הגדרות צבעים עבור Dark Mode */
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --primary-color: #357abd;
+            --text-color: #f5f7fa;
+            --label-color: #bbb;
+            --sub-label: #999;
+            --border-color: #444;
+            --panel-bg: #2a2a2a;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--secondary-color);
+            background-color: var(--bg-color);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -34,10 +51,11 @@
             margin: 0;
             padding: 20px;
             box-sizing: border-box;
+            transition: background-color 0.3s;
         }
 
         .card {
-            background: white;
+            background: var(--card-bg);
             padding: 2rem;
             border-radius: 15px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
@@ -46,9 +64,9 @@
             text-align: center;
             position: relative;
             overflow: hidden;
+            transition: background-color 0.3s, box-shadow 0.3s;
         }
 
-        /* כפתור הגדרות */
         .settings-toggle {
             position: absolute;
             top: 15px;
@@ -62,15 +80,21 @@
 
         h1 {
             color: var(--primary-color);
-            margin-bottom: 1.5rem;
+            margin-bottom: 0.2rem;
             font-size: 1.5rem;
         }
 
-        /* פאנל הגדרות נפתח */
+        .today-display {
+            font-size: 1rem;
+            color: var(--sub-label);
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+
         .settings-panel {
             display: none;
-            background: #f9f9f9;
-            border: 2px dashed #ddd;
+            background: var(--panel-bg);
+            border: 2px dashed var(--border-color);
             border-radius: 10px;
             padding: 15px;
             margin-bottom: 1.5rem;
@@ -90,31 +114,51 @@
             display: block;
             margin-bottom: 0.5rem;
             font-weight: bold;
-            color: #555;
+            color: var(--label-color);
             font-size: 0.95rem;
         }
 
         input, select {
             width: 100%;
             padding: 12px;
-            border: 2px solid #ddd;
+            border: 2px solid var(--border-color);
             border-radius: 8px;
             font-size: 1.2rem;
             box-sizing: border-box;
             outline: none;
-            transition: border-color 0.3s;
+            transition: border-color 0.3s, background-color 0.3s, color 0.3s;
             text-align: center;
             letter-spacing: 1px;
+            background-color: var(--card-bg);
+            color: var(--text-color);
         }
 
         input:focus {
             border-color: var(--primary-color);
         }
 
+        /* כפתור מצב כהה */
+        .theme-btn {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 5px;
+            transition: opacity 0.2s;
+        }
+        .theme-btn:active {
+            opacity: 0.8;
+        }
+
         .results {
             margin-top: 1.5rem;
             padding-top: 1.2rem;
-            border-top: 2px solid var(--secondary-color);
+            border-top: 2px solid var(--bg-color);
         }
 
         .result-item {
@@ -123,7 +167,7 @@
 
         .result-label {
             font-size: 0.9rem;
-            color: #777;
+            color: var(--sub-label);
             margin-bottom: 2px;
         }
 
@@ -174,14 +218,28 @@
 <body>
 
 <div class="card">
-    <button id="toggleSettings" class="settings-toggle" title="הגדרות שכר">⚙️</button>
+    <button id="toggleSettings" class="settings-toggle" title="הגדרות">⚙️</button>
 
     <h1>מחשבון עבודה ושכר 💰</h1>
+    <div id="currentDayDisplay" class="today-display">טוען יום...</div>
     
     <div id="settingsPanel" class="settings-panel">
-        <div class="input-group" style="margin-bottom: 0;">
+        <div class="input-group">
             <label for="hourlyWageInput">שכר בסיס לשעה (₪):</label>
-            <input type="number" id="hourlyWageInput" step="0.01" placeholder="115" style="font-size: 1.1rem; padding: 8px;">
+            <input type="number" id="hourlyWageInput" step="0.01" placeholder="115.00" style="font-size: 1.1rem; padding: 8px;">
+        </div>
+
+        <div class="input-group">
+            <label for="dayOfWeek">הגדרת יום עבודה ומכסה:</label>
+            <select id="dayOfWeek" style="font-size: 1.1rem; padding: 8px;">
+                <option value="9">א' - ד' (9 שעות נוכחות)</option>
+                <option value="8.5">יום חמישי (8.5 שעות נוכחות)</option>
+            </select>
+        </div>
+
+        <div class="input-group" style="margin-bottom: 0;">
+            <label>עיצוב האפליקציה:</label>
+            <button id="themeToggleBtn" class="theme-btn">🌙 מעבר למצב כהה</button>
         </div>
     </div>
 
@@ -189,14 +247,6 @@
         <label for="arrivalTime">שעת הגעה (HH:MM):</label>
         <input type="text" id="arrivalTime" placeholder="08:00" maxlength="5" inputmode="numeric">
         <span id="saveStatus" class="saved-badge" style="display:none;">✓ נשמר להיום</span>
-    </div>
-
-    <div class="input-group">
-        <label for="dayOfWeek">יום עבודה</label>
-        <select id="dayOfWeek">
-            <option value="9">א' - ד' (9 שעות נוכחות)</option>
-            <option value="8.5">יום חמישי (8.5 שעות נוכחות)</option>
-        </select>
     </div>
 
     <div class="results">
@@ -222,6 +272,7 @@
 <script>
     const arrivalInput = document.getElementById('arrivalTime');
     const dayInput = document.getElementById('dayOfWeek');
+    const currentDayDisplay = document.getElementById('currentDayDisplay');
     const endTimeDisplay = document.getElementById('endTime');
     const timeTimerDisplay = document.getElementById('timeTimer');
     const timerLabel = document.getElementById('timerLabel');
@@ -229,25 +280,27 @@
     const currentRateBadge = document.getElementById('currentRateBadge');
     const saveStatus = document.getElementById('saveStatus');
     
-    // אלמנטים של תפריט ההגדרות החדש
     const toggleSettingsBtn = document.getElementById('toggleSettings');
     const settingsPanel = document.getElementById('settingsPanel');
     const hourlyWageInput = document.getElementById('hourlyWageInput');
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
 
-    // שכר ברירת מחדל אם אין משהו שמור
-    let baseWage = 115; 
+    // שכר בסיס עודכן ל-115 ש"ח כברירת מחדל
+    let baseWage = 115.00; 
+
+    const daysHebrew = ["יום ראשון", "יום שני", "יום שלישי", "יום רביעי", "יום חמישי", "יום שישי", "יום שבת"];
 
     function getTodayString() {
         const today = new Date();
         return `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
     }
 
-    // פתיחה וסגירה של פאנל ההגדרות
+    // ניהול פתיחה/סגירה של ההגדרות
     toggleSettingsBtn.addEventListener('click', () => {
         settingsPanel.classList.toggle('open');
     });
 
-    // שמירת השכר בהגדרות ישירות למכשיר בזמן שינוי
+    // שינוי שכר ושמירה במכשיר
     hourlyWageInput.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value);
         if (!isNaN(val) && val > 0) {
@@ -257,22 +310,50 @@
         }
     });
 
+    // האזנה לשינוי ידני של יום העבודה מתוך ההגדרות
+    dayInput.addEventListener('change', calculate);
+
+    // מנגנון החלפת מצב כהה/בהיר ושמירה במכשיר
+    themeToggleBtn.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        if (currentTheme === 'dark') {
+            document.documentElement.removeAttribute('data-theme');
+            themeToggleBtn.textContent = '🌙 מעבר למצב כהה';
+            localStorage.setItem('work_calc_theme', 'light');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            themeToggleBtn.textContent = '☀️ מעבר למצב בהיר';
+            localStorage.setItem('work_calc_theme', 'dark');
+        }
+    });
+
     function init() {
         const now = new Date();
         const day = now.getDay(); 
         
+        // 1. הצגת היום על המסך הראשי
+        currentDayDisplay.textContent = daysHebrew[day];
+
+        // 2. הגדרת יום עבודה אוטומטי (חמישי = 4)
         dayInput.value = (day === 4) ? "8.5" : "9";
 
-        // טעינת שכר שעתי מהמכשיר במידה וקיים
+        // 3. טעינת עיצוב כהה/בהיר שנשמר במכשיר
+        const savedTheme = localStorage.getItem('work_calc_theme');
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            themeToggleBtn.textContent = '☀️ מעבר למצב בהיר';
+        }
+
+        // 4. טעינת שכר שעתי שנשמר במכשיר
         const savedWage = localStorage.getItem('work_calc_wage');
         if (savedWage) {
             baseWage = parseFloat(savedWage);
             hourlyWageInput.value = baseWage;
         } else {
-            hourlyWageInput.value = baseWage; // ערך ברירת המחדל הראשוני
+            hourlyWageInput.value = baseWage;
         }
 
-        // טעינת שעת כניסה מהמכשיר במידה וקיים
+        // 5. טעינת שעת כניסה יומית שנשמרה במכשיר
         const savedDate = localStorage.getItem('work_calc_date');
         const savedTime = localStorage.getItem('work_calc_time');
         const todayStr = getTodayString();
@@ -416,9 +497,7 @@
         timeTimerDisplay.textContent = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
 
-    dayInput.addEventListener('change', calculate);
     setInterval(calculate, 1000);
-
     init();
 </script>
 
