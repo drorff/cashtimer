@@ -181,7 +181,7 @@
     <div id="settingsPanel" class="settings-panel">
         <div class="input-group" style="margin-bottom: 0;">
             <label for="hourlyWageInput">שכר בסיס לשעה (₪):</label>
-            <input type="number" id="hourlyWageInput" step="0.01" placeholder="115.38" style="font-size: 1.1rem; padding: 8px;">
+            <input type="number" id="hourlyWageInput" step="0.01" placeholder="115" style="font-size: 1.1rem; padding: 8px;">
         </div>
     </div>
 
@@ -235,7 +235,7 @@
     const hourlyWageInput = document.getElementById('hourlyWageInput');
 
     // שכר ברירת מחדל אם אין משהו שמור
-    let baseWage = 115.38; 
+    let baseWage = 115; 
 
     function getTodayString() {
         const today = new Date();
