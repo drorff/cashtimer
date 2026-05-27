@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מחשבון שכר</title>
+    <title>מחשבון שכר יומי</title>
 
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="מחשבון שכר">
+    <meta name="apple-mobile-web-app-title" content="שכר יומי">
 
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏱️</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%234a90e2%22/><text x=%2210%22 y=%2275%22 font-size=%2270%22>⏱️</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%234a90e2%22/><circle cx=%2245%22 cy=%2245%22 r=%2230%22 fill=%22none%22 stroke=%22white%22 stroke-width=%226%22/><path d=%22M45 25 v20 h15%22 fill=%22none%22 stroke=%22white%22 stroke-width=%226%22 stroke-linecap=%22round%22/><circle cx=%2270%22 cy=%2270%22 r=%2218%22 fill=%22%232ecc71%22/><text x=%2260%22 y=%2278%22 font-size=%2224%22 font-family=%22Arial%22 font-weight=%22bold%22 fill=%22white%22>₪</text></svg>">
+
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%234a90e2%22/><circle cx=%2245%22 cy=%2245%22 r=%2228%22 fill=%22none%22 stroke=%22white%22 stroke-width=%227%22/><path d=%22M45 25 v20 h15%22 fill=%22none%22 stroke=%22white%22 stroke-width=%227%22 stroke-linecap=%22round%22/><circle cx=%2272%22 cy=%2272%22 r=%2220%22 fill=%22%232ecc71%22/><text x=%2261%22 y=%2281%22 font-size=%2226%22 font-family=%22Arial%22 font-weight=%22bold%22 fill=%22white%22>₪</text></svg>">
 
     <style>
         :root {
@@ -29,7 +30,6 @@
             --panel-bg: #f9f9f9;
         }
 
-        /* הגדרות צבעים עבור Dark Mode */
         [data-theme="dark"] {
             --bg-color: #121212;
             --card-bg: #1e1e1e;
@@ -137,7 +137,6 @@
             border-color: var(--primary-color);
         }
 
-        /* כפתור מצב כהה */
         .theme-btn {
             width: 100%;
             padding: 10px;
@@ -220,7 +219,7 @@
 <div class="card">
     <button id="toggleSettings" class="settings-toggle" title="הגדרות">⚙️</button>
 
-    <h1>מחשבון עבודה ושכר 💰</h1>
+    <h1>מחשבון שכר יומי 💰</h1>
     <div id="currentDayDisplay" class="today-display">טוען יום...</div>
     
     <div id="settingsPanel" class="settings-panel">
@@ -285,7 +284,6 @@
     const hourlyWageInput = document.getElementById('hourlyWageInput');
     const themeToggleBtn = document.getElementById('themeToggleBtn');
 
-    // שכר בסיס עודכן ל-115 ש"ח כברירת מחדל
     let baseWage = 115.00; 
 
     const daysHebrew = ["יום ראשון", "יום שני", "יום שלישי", "יום רביעי", "יום חמישי", "יום שישי", "יום שבת"];
@@ -295,12 +293,10 @@
         return `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
     }
 
-    // ניהול פתיחה/סגירה של ההגדרות
     toggleSettingsBtn.addEventListener('click', () => {
         settingsPanel.classList.toggle('open');
     });
 
-    // שינוי שכר ושמירה במכשיר
     hourlyWageInput.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value);
         if (!isNaN(val) && val > 0) {
@@ -310,10 +306,8 @@
         }
     });
 
-    // האזנה לשינוי ידני של יום העבודה מתוך ההגדרות
     dayInput.addEventListener('change', calculate);
 
-    // מנגנון החלפת מצב כהה/בהיר ושמירה במכשיר
     themeToggleBtn.addEventListener('click', () => {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         if (currentTheme === 'dark') {
@@ -331,20 +325,15 @@
         const now = new Date();
         const day = now.getDay(); 
         
-        // 1. הצגת היום על המסך הראשי
         currentDayDisplay.textContent = daysHebrew[day];
-
-        // 2. הגדרת יום עבודה אוטומטי (חמישי = 4)
         dayInput.value = (day === 4) ? "8.5" : "9";
 
-        // 3. טעינת עיצוב כהה/בהיר שנשמר במכשיר
         const savedTheme = localStorage.getItem('work_calc_theme');
         if (savedTheme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
             themeToggleBtn.textContent = '☀️ מעבר למצב בהיר';
         }
 
-        // 4. טעינת שכר שעתי שנשמר במכשיר
         const savedWage = localStorage.getItem('work_calc_wage');
         if (savedWage) {
             baseWage = parseFloat(savedWage);
@@ -353,7 +342,6 @@
             hourlyWageInput.value = baseWage;
         }
 
-        // 5. טעינת שעת כניסה יומית שנשמרה במכשיר
         const savedDate = localStorage.getItem('work_calc_date');
         const savedTime = localStorage.getItem('work_calc_time');
         const todayStr = getTodayString();
