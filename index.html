@@ -44,39 +44,45 @@
             width: 100%;
             max-width: 400px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* כפתור הגדרות */
+        .settings-toggle {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            cursor: pointer;
+            z-index: 10;
         }
 
         h1 {
             color: var(--primary-color);
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             font-size: 1.5rem;
         }
 
-        /* כפתור יצירת קיצור דרך באייפון */
-        .shortcut-btn {
-            background-color: #8e44ad;
-            color: white;
-            border: none;
-            padding: 12px 15px;
+        /* פאנל הגדרות נפתח */
+        .settings-panel {
+            display: none;
+            background: #f9f9f9;
+            border: 2px dashed #ddd;
             border-radius: 10px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
+            padding: 15px;
             margin-bottom: 1.5rem;
-            width: 100%;
-            transition: background 0.3s, transform 0.1s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: right;
         }
-        .shortcut-btn:active {
-            transform: scale(0.98);
+
+        .settings-panel.open {
+            display: block;
         }
 
         .input-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.2rem;
             text-align: right;
         }
 
@@ -85,6 +91,7 @@
             margin-bottom: 0.5rem;
             font-weight: bold;
             color: #555;
+            font-size: 0.95rem;
         }
 
         input, select {
@@ -167,10 +174,16 @@
 <body>
 
 <div class="card">
+    <button id="toggleSettings" class="settings-toggle" title="הגדרות שכר">⚙️</button>
+
     <h1>מחשבון עבודה ושכר 💰</h1>
     
-    <!-- הכפתור החדש שמפעיל את הקיצור באייפון -->
-    <button id="setReminderBtn" class="shortcut-btn">⏰ הגדר התראה באייפון לסוף התקן</button>
+    <div id="settingsPanel" class="settings-panel">
+        <div class="input-group" style="margin-bottom: 0;">
+            <label for="hourlyWageInput">שכר בסיס לשעה (₪):</label>
+            <input type="number" id="hourlyWageInput" step="0.01" placeholder="115.38" style="font-size: 1.1rem; padding: 8px;">
+        </div>
+    </div>
 
     <div class="input-group">
         <label for="arrivalTime">שעת הגעה (HH:MM):</label>
@@ -215,16 +228,34 @@
     const moneyDisplay = document.getElementById('moneyEarned');
     const currentRateBadge = document.getElementById('currentRateBadge');
     const saveStatus = document.getElementById('saveStatus');
-    const setReminderBtn = document.getElementById('setReminderBtn');
+    
+    // אלמנטים של תפריט ההגדרות החדש
+    const toggleSettingsBtn = document.getElementById('toggleSettings');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const hourlyWageInput = document.getElementById('hourlyWageInput');
 
-    const BASE_WAGE = 115.38; 
-    let globalEndH = 0;
-    let globalEndM = 0;
+    // שכר ברירת מחדל אם אין משהו שמור
+    let baseWage = 115.38; 
 
     function getTodayString() {
         const today = new Date();
         return `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
     }
+
+    // פתיחה וסגירה של פאנל ההגדרות
+    toggleSettingsBtn.addEventListener('click', () => {
+        settingsPanel.classList.toggle('open');
+    });
+
+    // שמירת השכר בהגדרות ישירות למכשיר בזמן שינוי
+    hourlyWageInput.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        if (!isNaN(val) && val > 0) {
+            baseWage = val;
+            localStorage.setItem('work_calc_wage', val);
+            calculate();
+        }
+    });
 
     function init() {
         const now = new Date();
@@ -232,6 +263,16 @@
         
         dayInput.value = (day === 4) ? "8.5" : "9";
 
+        // טעינת שכר שעתי מהמכשיר במידה וקיים
+        const savedWage = localStorage.getItem('work_calc_wage');
+        if (savedWage) {
+            baseWage = parseFloat(savedWage);
+            hourlyWageInput.value = baseWage;
+        } else {
+            hourlyWageInput.value = baseWage; // ערך ברירת המחדל הראשוני
+        }
+
+        // טעינת שעת כניסה מהמכשיר במידה וקיים
         const savedDate = localStorage.getItem('work_calc_date');
         const savedTime = localStorage.getItem('work_calc_time');
         const todayStr = getTodayString();
@@ -285,11 +326,11 @@
         start.setHours(arrivalH, arrivalM, 0);
 
         const totalMinutesToExit = (arrivalH * 60) + arrivalM + (presenceHours * 60);
-        globalEndH = Math.floor(totalMinutesToExit / 60) % 24;
-        globalEndM = Math.floor(totalMinutesToExit % 60);
-        endTimeDisplay.textContent = `${String(globalEndH).padStart(2, '0')}:${String(globalEndM).padStart(2, '0')}`;
+        const endH = Math.floor(totalMinutesToExit / 60) % 24;
+        const endM = Math.floor(totalMinutesToExit % 60);
+        endTimeDisplay.textContent = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 
-        updateDynamics(start, globalEndH, globalEndM, presenceHours);
+        updateDynamics(start, endH, endM, presenceHours);
     }
 
     function updateDynamics(start, endH, endM, presenceHours) {
@@ -328,20 +369,20 @@
         let rateClass = "";
 
         if (totalHoursPassedNet <= standardPaidHours) {
-            totalEarned = totalHoursPassedNet * BASE_WAGE;
+            totalEarned = totalHoursPassedNet * baseWage;
             currentRateText = "תעריף: 100% (תקן)";
             rateClass = "rate-100";
         } else if (totalHoursPassedNet <= (standardPaidHours + 2)) {
-            const regularEarnings = standardPaidHours * BASE_WAGE;
+            const regularEarnings = standardPaidHours * baseWage;
             const overtimeHours125 = totalHoursPassedNet - standardPaidHours;
-            totalEarned = regularEarnings + (overtimeHours125 * (BASE_WAGE * 1.25));
+            totalEarned = regularEarnings + (overtimeHours125 * (baseWage * 1.25));
             currentRateText = "תעריף: 125% 🚀";
             rateClass = "rate-125";
         } else {
-            const regularEarnings = standardPaidHours * BASE_WAGE;
-            const overtimeEarnings125 = 2 * (BASE_WAGE * 1.25);
+            const regularEarnings = standardPaidHours * baseWage;
+            const overtimeEarnings125 = 2 * (baseWage * 1.25);
             const overtimeHours150 = totalHoursPassedNet - (standardPaidHours + 2);
-            totalEarned = regularEarnings + overtimeEarnings125 + (overtimeHours150 * (BASE_WAGE * 1.50));
+            totalEarned = regularEarnings + overtimeEarnings125 + (overtimeHours150 * (baseWage * 1.50));
             currentRateText = "תעריף: 150% 🔥";
             rateClass = "rate-150";
         }
@@ -374,35 +415,6 @@
         const secs = Math.floor((ms % (1000 * 60)) / 1000);
         timeTimerDisplay.textContent = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
-
-    // פונקציית יצירת התזכורת המובנית לאייפון דרך מערכת ה-URL Schemes של אפל
-    setReminderBtn.addEventListener('click', () => {
-        const paddedH = String(globalEndH).padStart(2, '0');
-        const paddedM = String(globalEndM).padStart(2, '0');
-        
-        // יצירת אירוע ישיר באפליקציית התזכורות המובנית של iOS שפועל ברקע
-        const reminderTitle = encodeURIComponent("סוף משמרת תקן - מתחילות שעות נוספות! 🚀");
-        const iosShortcutsUrl = `shortcuts://x-callback-url/run-shortcut?name=${encodeURIComponent("יצירת התראה")}&input=${paddedH}:${paddedM}`;
-        
-        // פתיחת אפליקציית השעון המעורר ישירות עם השעה הנכונה (כגיבוי פשוט ומהיר ללא צורך בהגדרות)
-        // המשתמש מועבר ישירות להגדרת שעון מעורר קבוע
-        alert(`השעה המתוכננת היא ${paddedH}:${paddedM}. בלחיצה על אישור, נעביר אותך לאפליקציית השעון/התזכורות המובנית של האייפון.`);
-        
-        // דרך קלה: פתיחת תזכורת ביומן של האייפון בצורה חלקה
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        
-        const calUrl = `data:text/calendar;charset=utf8,BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${year}${month}${day}T${paddedH}${paddedM}00\nDTEND:${year}${month}${day}T${paddedH}${paddedM}00\nSUMMARY:סוף משמרת תקן 🚀\nDESCRIPTION:שעות הנוכחות הרגילות הסתיימו. תעריף 125% מתחיל עכשיו!\nEND:VEVENT\nEND:VCALENDAR`;
-        
-        const link = document.createElement('a');
-        link.href = calUrl;
-        link.download = 'shift_end.ics';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    });
 
     dayInput.addEventListener('change', calculate);
     setInterval(calculate, 1000);
